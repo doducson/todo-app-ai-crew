@@ -1,0 +1,126 @@
+{
+  "system_overview": "A simple web-based todo list application with a React SPA frontend and an Express.js REST API backend providing user authentication and CRUD operations for tasks, backed by a PostgreSQL database.",
+  "components": [
+    {
+      "name": "React Frontend",
+      "responsibility": "Provides UI for user authentication and task management; communicates with backend API.",
+      "interfaces": [
+        "HTTPS REST API"
+      ]
+    },
+    {
+      "name": "Express.js API",
+      "responsibility": "Handles authentication, authorization, and CRUD operations for tasks and users.",
+      "interfaces": [
+        "REST API endpoints",
+        "PostgreSQL"
+      ]
+    },
+    {
+      "name": "PostgreSQL Database",
+      "responsibility": "Stores users and tasks data.",
+      "interfaces": [
+        "SQL connection from API"
+      ]
+    }
+  ],
+  "data": {
+    "entities": [
+      {
+        "name": "User",
+        "fields": [
+          "id",
+          "email",
+          "password_hash",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      {
+        "name": "Task",
+        "fields": [
+          "id",
+          "user_id",
+          "title",
+          "description",
+          "status",
+          "due_date",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    ],
+    "storage": {
+      "primary": "PostgreSQL",
+      "cache": "None"
+    }
+  },
+  "api": {
+    "endpoints": [
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "auth": false,
+        "description": "Register a new user"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "auth": false,
+        "description": "Authenticate user and return JWT"
+      },
+      {
+        "method": "GET",
+        "path": "/api/tasks",
+        "auth": true,
+        "description": "List all tasks for the authenticated user"
+      },
+      {
+        "method": "POST",
+        "path": "/api/tasks",
+        "auth": true,
+        "description": "Create a new task"
+      },
+      {
+        "method": "GET",
+        "path": "/api/tasks/:id",
+        "auth": true,
+        "description": "Get a specific task by ID"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/tasks/:id",
+        "auth": true,
+        "description": "Update a task by ID"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/tasks/:id",
+        "auth": true,
+        "description": "Delete a task by ID"
+      }
+    ]
+  },
+  "infra": {
+    "deployment": "Docker",
+    "scaling": "Horizontal"
+  },
+  "security": {
+    "auth": "JWT",
+    "encryption": "AES-256"
+  },
+  "risks": [
+    {
+      "risk": "Insecure password storage",
+      "mitigation": "Use strong hashing (bcrypt/argon2) with salt"
+    },
+    {
+      "risk": "Unauthorized access to tasks",
+      "mitigation": "Enforce user ownership checks on all task operations"
+    },
+    {
+      "risk": "Token leakage",
+      "mitigation": "Use HTTPS, secure storage on client, and short-lived tokens with refresh strategy"
+    }
+  ]
+}
