@@ -1,0 +1,38 @@
+{
+  "project": {
+    "name": "AI Generated Project",
+    "description": "Build a simple todo list app with React frontend and Express.js backend. Include user authentication and CRUD task operations.",
+    "goals": [
+      "Deliver MVP",
+      "Validate concept"
+    ]
+  },
+  "requirements": {
+    "functional": [
+      {
+        "id": "FR-001",
+        "description": "Core functionality based on user requirements",
+        "priority": "P1",
+        "acceptance_criteria": [
+          "Feature works as described"
+        ]
+      }
+    ],
+    "non_functional": []
+  },
+  "scope": {
+    "in_scope": [
+      "MVP features"
+    ],
+    "out_of_scope": [
+      "Advanced features"
+    ]
+  },
+  "assumptions": [
+    "Standard web deployment"
+  ],
+  "open_questions": [],
+  "success_metrics": [
+    "User satisfaction"
+  ]
+}
