@@ -1,0 +1,150 @@
+{
+  "project_structure": {
+    "root": "ai-generated-project",
+    "directories": [
+      "frontend",
+      "backend"
+    ],
+    "description": "Monorepo with backend Express API, frontend React SPA, and shared orchestration"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "content": "# AI Generated Project\n\nA simple todo list application demonstrating a React frontend and Express backend with PostgreSQL persistence. Includes user authentication and CRUD operations for tasks.\n\n## Structure\n- `/backend` – Express.js API with authentication and task management.\n- `/frontend` – React SPA (Create React App) consuming the API.\n\n## Development\n1. Install root dependencies (concurrently, eslint, etc.):\n   ```bash\n   npm install\n   ```\n2. Install workspace dependencies:\n   ```bash\n   npm install --workspace backend\n   npm install --workspace frontend\n   ```\n3. Start both servers concurrently:\n   ```bash\n   npm run dev\n   ```\n\n## Environment\n- Copy `/backend/.env.example` to `/backend/.env` and fill in PostgreSQL connection and JWT secret.\n\n## Testing\n- Backend: `npm run test` (placeholder for future enhancement)\n- Frontend: `npm run test --workspace frontend`\n",
+      "language": "markdown",
+      "commit_message": "feat: add project README"
+    },
+    {
+      "path": "package.json",
+      "content": "{\n  \"name\": \"ai-generated-project\",\n  \"private\": true,\n  \"workspaces\": [\n    \"frontend\",\n    \"backend\"\n  ],\n  \"scripts\": {\n    \"dev\": \"concurrently \\\"npm run start --workspace backend\\\" \\\"npm run start --workspace frontend\\\"\",\n    \"lint\": \"eslint \\\"frontend/src/**\\\" \\\"backend/src/**\\\"\",\n    \"start:backend\": \"npm --workspace backend run dev\",\n    \"start:frontend\": \"npm --workspace frontend start\"\n  },\n  \"devDependencies\": {\n    \"concurrently\": \"^7.6.0\",\n    \"eslint\": \"^8.40.0\"\n  }\n}\n",
+      "language": "json",
+      "commit_message": "chore: configure root workspace scripts"
+    },
+    {
+      "path": "backend/package.json",
+      "content": "{\n  \"name\": \"backend\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"main\": \"src/index.js\",\n  \"scripts\": {\n    \"start\": \"node src/index.js\",\n    \"dev\": \"nodemon src/index.js\"\n  },\n  \"dependencies\": {\n    \"bcrypt\": \"^5.1.0\",\n    \"cors\": \"^2.8.5\",\n    \"dotenv\": \"^16.3.1\",\n    \"express\": \"^4.18.2\",\n    \"jsonwebtoken\": \"^9.0.0\",\n    \"morgan\": \"^1.10.0\",\n    \"pg\": \"^8.11.1\"\n  },\n  \"devDependencies\": {\n    \"nodemon\": \"^2.0.22\"\n  }\n}\n",
+      "language": "json",
+      "commit_message": "feat: setup backend package manifest"
+    },
+    {
+      "path": "backend/.env.example",
+      "content": "PORT=4000\nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/todos\nJWT_SECRET=super-secret-key\n",
+      "language": "dotenv",
+      "commit_message": "docs: add backend env example"
+    },
+    {
+      "path": "backend/src/db.js",
+      "content": "const { Pool } = require(\"pg\");\n\nconst pool = new Pool({\n  connectionString: process.env.DATABASE_URL,\n});\n\nmodule.exports = pool;\n",
+      "language": "javascript",
+      "commit_message": "feat: add database pool helper"
+    },
+    {
+      "path": "backend/src/middleware/auth.js",
+      "content": "const jwt = require(\"jsonwebtoken\");\n\nconst authMiddleware = (req, res, next) => {\n  const authHeader = req.headers.authorization;\n  if (!authHeader || !authHeader.startsWith(\"Bearer \")) {\n    return res.status(401).json({ message: \"Missing authorization token\" });\n  }\n\n  const token = authHeader.split(\" \")[1];\n  try {\n    const payload = jwt.verify(token, process.env.JWT_SECRET);\n    req.user = { id: payload.userId };\n    next();\n  } catch (error) {\n    return res.status(401).json({ message: \"Invalid token\" });\n  }\n};\n\nmodule.exports = authMiddleware;\n",
+      "language": "javascript",
+      "commit_message": "feat: add auth middleware"
+    },
+    {
+      "path": "backend/src/routes/auth.js",
+      "content": "const express = require(\"express\");\nconst bcrypt = require(\"bcrypt\");\nconst jwt = require(\"jsonwebtoken\");\nconst pool = require(\"../db\");\n\nconst router = express.Router();\n\nrouter.post(\"/register\", async (req, res) => {\n  const { email, password } = req.body;\n\n  if (!email || !password) {\n    return res.status(400).json({ message: \"Email and password are required\" });\n  }\n\n  try {\n    const hashedPassword = await bcrypt.hash(password, 10);\n    const result = await pool.query(\n      \"INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email\",\n      [email, hashedPassword]\n    );\n\n    const [user] = result.rows;\n    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {\n      expiresIn: \"1h\",\n    });\n\n    res.status(201).json({ user: { id: user.id, email: user.email }, token });\n  } catch (error) {\n    if (error.code === \"23505\") {\n      return res.status(409).json({ message: \"Email already registered\" });\n    }\n    console.error(error);\n    res.status(500).json({ message: \"Internal server error\" });\n  }\n});\n\nrouter.post(\"/login\", async (req, res) => {\n  const { email, password } = req.body;\n\n  if (!email || !password) {\n    return res.status(400).json({ message: \"Email and password are required\" });\n  }\n\n  try {\n    const result = await pool.query(\"SELECT id, email, password_hash FROM users WHERE email = $1\", [email]);\n    const user = result.rows[0];\n\n    if (!user) {\n      return res.status(401).json({ message: \"Invalid credentials\" });\n    }\n\n    const isValid = await bcrypt.compare(password, user.password_hash);\n    if (!isValid) {\n      return res.status(401).json({ message: \"Invalid credentials\" });\n    }\n\n    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {\n      expiresIn: \"1h\",\n    });\n\n    res.json({ user: { id: user.id, email: user.email }, token });\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: \"Internal server error\" });\n  }\n});\n\nmodule.exports = router;\n",
+      "language": "javascript",
+      "commit_message": "feat: add auth routes"
+    },
+    {
+      "path": "backend/src/routes/tasks.js",
+      "content": "const express = require(\"express\");\nconst pool = require(\"../db\");\nconst authMiddleware = require(\"../middleware/auth\");\n\nconst router = express.Router();\nrouter.use(authMiddleware);\n\nrouter.get(\"/\", async (req, res) => {\n  const { id } = req.user;\n  try {\n    const result = await pool.query(\n      \"SELECT id, title, description, status, due_date FROM tasks WHERE user_id = $1 ORDER BY created_at DESC\",\n      [id]\n    );\n    res.json({ tasks: result.rows });\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: \"Unable to fetch tasks\" });\n  }\n});\n\nrouter.post(\"/\", async (req, res) => {\n  const { id } = req.user;\n  const { title, description, due_date } = req.body;\n\n  if (!title) {\n    return res.status(400).json({ message: \"Title is required\" });\n  }\n\n  try {\n    const result = await pool.query(\n      \"INSERT INTO tasks (user_id, title, description, status, due_date) VALUES ($1, $2, $3, 'pending', $4) RETURNING id, title, description, status, due_date\",\n      [id, title, description || null, due_date || null]\n    );\n\n    res.status(201).json({ task: result.rows[0] });\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: \"Unable to create task\" });\n  }\n});\n\nrouter.put(\"/:taskId\", async (req, res) => {\n  const { id } = req.user;\n  const { taskId } = req.params;\n  const { title, description, status, due_date } = req.body;\n\n  try {\n    const result = await pool.query(\n      \"UPDATE tasks SET title = COALESCE($1, title), description = COALESCE($2, description), status = COALESCE($3, status), due_date = COALESCE($4, due_date), updated_at = NOW() WHERE id = $5 AND user_id = $6 RETURNING id, title, description, status, due_date\",\n      [title, description, status, due_date, taskId, id]\n    );\n\n    if (!result.rowCount) {\n      return res.status(404).json({ message: \"Task not found\" });\n    }\n\n    res.json({ task: result.rows[0] });\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: \"Unable to update task\" });\n  }\n});\n\nrouter.delete(\"/:taskId\", async (req, res) => {\n  const { id } = req.user;\n  const { taskId } = req.params;\n\n  try {\n    const result = await pool.query(\"DELETE FROM tasks WHERE id = $1 AND user_id = $2\", [taskId, id]);\n    if (!result.rowCount) {\n      return res.status(404).json({ message: \"Task not found\" });\n    }\n    res.status(204).send();\n  } catch (error) {\n    console.error(error);\n    res.status(500).json({ message: \"Unable to delete task\" });\n  }\n});\n\nmodule.exports = router;\n",
+      "language": "javascript",
+      "commit_message": "feat: implement task CRUD routes"
+    },
+    {
+      "path": "backend/src/index.js",
+      "content": "require(\"dotenv\").config();\nconst express = require(\"express\");\nconst cors = require(\"cors\");\nconst morgan = require(\"morgan\");\nconst authRoutes = require(\"./routes/auth\");\nconst taskRoutes = require(\"./routes/tasks\");\n\nconst app = express();\napp.use(cors());\napp.use(express.json());\napp.use(morgan(\"dev\"));\n\napp.use(\"/api/auth\", authRoutes);\napp.use(\"/api/tasks\", taskRoutes);\n\napp.get(\"/\", (req, res) => res.json({ message: \"Todo API running\" }));\n\nconst PORT = process.env.PORT || 4000;\napp.listen(PORT, () => console.log(`API listening on port ${PORT}`));\n",
+      "language": "javascript",
+      "commit_message": "feat: bootstrap express server"
+    },
+    {
+      "path": "frontend/package.json",
+      "content": "{\n  \"name\": \"frontend\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"dependencies\": {\n    \"axios\": \"^1.6.3\",\n    \"react\": \"^18.2.0\",\n    \"react-dom\": \"^18.2.0\",\n    \"react-router-dom\": \"^6.16.0\",\n    \"react-scripts\": \"5.0.1\"\n  },\n  \"scripts\": {\n    \"start\": \"PORT=3000 react-scripts start\",\n    \"build\": \"react-scripts build\",\n    \"test\": \"react-scripts test --watchAll=false\",\n    \"eject\": \"react-scripts eject\"\n  }\n}\n",
+      "language": "json",
+      "commit_message": "feat: configure frontend dependencies"
+    },
+    {
+      "path": "frontend/public/index.html",
+      "content": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n    <title>Todo App</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n",
+      "language": "html",
+      "commit_message": "feat: add frontend HTML shell"
+    },
+    {
+      "path": "frontend/src/index.js",
+      "content": "import React from \"react\";\nimport { createRoot } from \"react-dom/client\";\nimport App from \"./App\";\nimport \"./styles.css\";\n\nconst root = createRoot(document.getElementById(\"root\"));\nroot.render(<App />);\n",
+      "language": "javascript",
+      "commit_message": "feat: entry point for React app"
+    },
+    {
+      "path": "frontend/src/styles.css",
+      "content": "body {\n  font-family: \"Inter\", sans-serif;\n  margin: 0;\n  background: #f6f7fb;\n  color: #1d1f30;\n}\n\n.app-shell {\n  max-width: 900px;\n  margin: 0 auto;\n  padding: 1.5rem;\n}\n\n.card {\n  background: #fff;\n  border-radius: 12px;\n  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);\n  padding: 1.5rem;\n  margin-bottom: 1rem;\n}\n\nbutton {\n  border: none;\n  border-radius: 6px;\n  padding: 0.75rem 1.25rem;\n  font-size: 1rem;\n  cursor: pointer;\n}\n\ninput,\ntextarea,\nselect {\n  width: 100%;\n  padding: 0.75rem;\n  border-radius: 8px;\n  border: 1px solid #d0d5dd;\n  margin-bottom: 0.75rem;\n}\n\n.task {\n  border-bottom: 1px solid #f0f1f5;\n  padding: 0.75rem 0;\n  display: flex;\n  justify-content: space-between;\n}\n\n.task + .task {\n  margin-top: 0.5rem;\n}\n\n.status-badge {\n  padding: 0.35rem 0.75rem;\n  border-radius: 999px;\n  font-size: 0.8rem;\n  font-weight: 600;\n}\n\n.status-pending {\n  background: #fffaed;\n  color: #b45309;\n}\n\n.status-completed {\n  background: #ecfdf3;\n  color: #166534;\n}\n",
+      "language": "css",
+      "commit_message": "feat: add base styles"
+    },
+    {
+      "path": "frontend/src/App.js",
+      "content": "import React from \"react\";\nimport { BrowserRouter, Routes, Route, Navigate } from \"react-router-dom\";\nimport LoginPage from \"./pages/LoginPage\";\nimport TodoPage from \"./pages/TodoPage\";\n\nfunction App() {\n  const token = localStorage.getItem(\"token\");\n\n  return (\n    <BrowserRouter>\n      <div className=\"app-shell\">\n        <Routes>\n          <Route\n            path=\"/\"\n            element={token ? <Navigate replace to=\"/todos\" /> : <Navigate replace to=\"/login\" />}\n          />\n          <Route path=\"/login\" element={<LoginPage />} />\n          <Route path=\"/todos\" element={token ? <TodoPage /> : <Navigate replace to=\"/login\" />} />\n        </Routes>\n      </div>\n    </BrowserRouter>\n  );\n}\n\nexport default App;\n",
+      "language": "javascript",
+      "commit_message": "feat: wire frontend routes"
+    },
+    {
+      "path": "frontend/src/services/api.js",
+      "content": "import axios from \"axios\";\n\nconst API = axios.create({\n  baseURL: \"http://localhost:4000/api\",\n});\n\nAPI.interceptors.request.use((config) => {\n  const token = localStorage.getItem(\"token\");\n  if (token) {\n    config.headers.Authorization = `Bearer ${token}`;\n  }\n  return config;\n});\n\nexport default API;\n",
+      "language": "javascript",
+      "commit_message": "feat: create api client"
+    },
+    {
+      "path": "frontend/src/pages/LoginPage.js",
+      "content": "import React, { useState } from \"react\";\nimport API from \"../services/api\";\n\nconst initialState = { email: \"\", password: \"\" };\n\nexport default function LoginPage() {\n  const [form, setForm] = useState(initialState);\n  const [mode, setMode] = useState(\"login\");\n  const [message, setMessage] = useState(null);\n\n  const handleChange = ({ target }) => setForm({ ...form, [target.name]: target.value });\n\n  const handleSubmit = async (event) => {\n    event.preventDefault();\n    try {\n      const endpoint = mode === \"login\" ? \"/auth/login\" : \"/auth/register\";\n      const response = await API.post(endpoint, form);\n      localStorage.setItem(\"token\", response.data.token);\n      window.location.href = \"/todos\";\n    } catch (error) {\n      setMessage(error.response?.data?.message || \"Unexpected error\");\n    }\n  };\n\n  return (\n    <div className=\"card\">\n      <h2>{mode === \"login\" ? \"Login to Todo\" : \"Create an account\"}</h2>\n      <form onSubmit={handleSubmit}>\n        <input name=\"email\" type=\"email\" placeholder=\"Email\" value={form.email} onChange={handleChange} required />\n        <input\n          name=\"password\"\n          type=\"password\"\n          placeholder=\"Password\"\n          value={form.password}\n          onChange={handleChange}\n          required\n        />\n        <button type=\"submit\" style={{ background: \"#111827\", color: \"#fff\" }}>\n          {mode === \"login\" ? \"Login\" : \"Register\"}\n        </button>\n      </form>\n      <button\n        style={{ marginTop: \"1rem\", background: \"#e2e8f0\" }}\n        onClick={() => {\n          setMode((mode) => (mode === \"login\" ? \"register\" : \"login\"));\n          setMessage(null);\n        }}\n      >\n        Switch to {mode === \"login\" ? \"Register\" : \"Login\"}\n      </button>\n      {message && <p style={{ color: \"#b91c1c\", marginTop: \"1rem\" }}>{message}</p>}\n    </div>\n  );\n}\n",
+      "language": "javascript",
+      "commit_message": "feat: add login/register form"
+    },
+    {
+      "path": "frontend/src/components/TaskForm.js",
+      "content": "import React, { useState } from \"react\";\n\nexport default function TaskForm({ onSubmit }) {\n  const [state, setState] = useState({ title: \"\", description: \"\", due_date: \"\" });\n\n  const handleChange = ({ target }) => setState({ ...state, [target.name]: target.value });\n\n  const handleSubmit = (event) => {\n    event.preventDefault();\n    onSubmit(state);\n    setState({ title: \"\", description: \"\", due_date: \"\" });\n  };\n\n  return (\n    <form onSubmit={handleSubmit} className=\"card\">\n      <h3>Create New Task</h3>\n      <input name=\"title\" placeholder=\"Title\" value={state.title} onChange={handleChange} required />\n      <textarea\n        name=\"description\"\n        placeholder=\"Optional description\"\n        rows={3}\n        value={state.description}\n        onChange={handleChange}\n      />\n      <input name=\"due_date\" type=\"date\" value={state.due_date} onChange={handleChange} />\n      <button type=\"submit\" style={{ background: \"#2563eb\", color: \"#fff\" }}>\n        Add Task\n      </button>\n    </form>\n  );\n}\n",
+      "language": "javascript",
+      "commit_message": "feat: add task form component"
+    },
+    {
+      "path": "frontend/src/components/TaskList.js",
+      "content": "import React from \"react\";\n\nconst statusClasses = {\n  pending: \"status-badge status-pending\",\n  completed: \"status-badge status-completed\",\n};\n\nexport default function TaskList({ tasks, onDelete, onStatusChange }) {\n  if (!tasks.length) {\n    return <p>No tasks yet. Add one!</p>;\n  }\n\n  return (\n    <div className=\"card\">\n      <h3>Your Tasks</h3>\n      {tasks.map((task) => (\n        <div className=\"task\" key={task.id}>\n          <div>\n            <strong>{task.title}</strong>\n            {task.description && <p>{task.description}</p>}\n            {task.due_date && <small>Due: {new Date(task.due_date).toLocaleDateString()}</small>}\n          </div>\n          <div style={{ textAlign: \"right\" }}>\n            <span className={statusClasses[task.status]}>{task.status}</span>\n            <div style={{ marginTop: \"0.5rem\" }}>\n              <select\n                value={task.status}\n                onChange={(event) => onStatusChange(task.id, event.target.value)}\n              >\n                <option value=\"pending\">Pending</option>\n                <option value=\"completed\">Completed</option>\n              </select>\n              <button\n                style={{ marginLeft: \"0.5rem\", background: \"#ef4444\", color: \"#fff\" }}\n                onClick={() => onDelete(task.id)}\n              >\n                Delete\n              </button>\n            </div>\n          </div>\n        </div>\n      ))}\n    </div>\n  );\n}\n",
+      "language": "javascript",
+      "commit_message": "feat: add task list component"
+    },
+    {
+      "path": "frontend/src/pages/TodoPage.js",
+      "content": "import React, { useEffect, useState } from \"react\";\nimport API from \"../services/api\";\nimport TaskForm from \"../components/TaskForm\";\nimport TaskList from \"../components/TaskList\";\n\nexport default function TodoPage() {\n  const [tasks, setTasks] = useState([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState(null);\n\n  const fetchTasks = async () => {\n    try {\n      setLoading(true);\n      const response = await API.get(\"/tasks\");\n      setTasks(response.data.tasks);\n    } catch (err) {\n      setError(err.response?.data?.message || \"Unable to fetch tasks\");\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  useEffect(() => {\n    fetchTasks();\n  }, []);\n\n  const handleCreate = async (payload) => {\n    try {\n      const response = await API.post(\"/tasks\", payload);\n      setTasks((prev) => [response.data.task, ...prev]);\n    } catch (err) {\n      setError(err.response?.data?.message || \"Unable to create task\");\n    }\n  };\n\n  const handleDelete = async (taskId) => {\n    try {\n      await API.delete(`/tasks/${taskId}`);\n      setTasks((prev) => prev.filter((task) => task.id !== taskId));\n    } catch (err) {\n      setError(err.response?.data?.message || \"Unable to delete task\");\n    }\n  };\n\n  const handleStatusChange = async (taskId, status) => {\n    try {\n      const response = await API.put(`/tasks/${taskId}`, { status });\n      setTasks((prev) => prev.map((task) => (task.id === taskId ? response.data.task : task)));\n    } catch (err) {\n      setError(err.response?.data?.message || \"Unable to update status\");\n    }\n  };\n\n  const handleLogout = () => {\n    localStorage.removeItem(\"token\");\n    window.location.href = \"/login\";\n  };\n\n  return (\n    <>\n      <div className=\"card\" style={{ display: \"flex\", justifyContent: \"space-between\", alignItems: \"center\" }}>\n        <h2>Todo Dashboard</h2>\n        <button style={{ background: \"#ef4444\", color: \"#fff\" }} onClick={handleLogout}>\n          Logout\n        </button>\n      </div>\n      <TaskForm onSubmit={handleCreate} />\n      {loading ? <p>Loading tasks...</p> : <TaskList tasks={tasks} onDelete={handleDelete} onStatusChange={handleStatusChange} />}\n      {error && <p style={{ color: \"#b91c1c\" }}>{error}</p>}\n    </>\n  );\n}\n",
+      "language": "javascript",
+      "commit_message": "feat: compose todo page"
+    }
+  ],
+  "setup_instructions": [
+    "Install root workspace tooling: npm install",
+    "Install backend dependencies: npm install --workspace backend",
+    "Install frontend dependencies: npm install --workspace frontend",
+    "Create backend .env from .env.example and configure DATABASE_URL + JWT_SECRET",
+    "Run the entire stack: npm run dev"
+  ],
+  "dependencies": {
+    "runtime": [
+      "express",
+      "pg",
+      "bcrypt",
+      "jsonwebtoken",
+      "react",
+      "react-dom",
+      "axios",
+      "react-router-dom"
+    ],
+    "dev": [
+      "concurrently",
+      "nodemon",
+      "eslint"
+    ]
+  }
+}
