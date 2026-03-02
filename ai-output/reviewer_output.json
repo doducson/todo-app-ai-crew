@@ -1,0 +1,20 @@
+{
+  "summary": "Unable to perform the requested review because no source code was provided in the submission.",
+  "score": 0,
+  "findings": [
+    {
+      "severity": "medium",
+      "category": "process",
+      "description": "Code review cannot be completed since the relevant source files were not supplied.",
+      "file": "N/A",
+      "line": 0,
+      "suggestion": "Please include the React frontend and Express.js backend source files (or links to them) so that a full review for logic, security, and performance can be performed."
+    }
+  ],
+  "recommendations": [
+    "Provide the project source files for review.",
+    "Resubmit once the codebase is available."
+  ],
+  "auto_fix_plan": [],
+  "approval_status": "changes_requested"
+}
