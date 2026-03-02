@@ -1,0 +1,405 @@
+{
+  "epics": [
+    {
+      "id": "EPIC-001",
+      "title": "Project Setup & Infrastructure",
+      "stories": [
+        {
+          "id": "STORY-001",
+          "title": "Initialize repository and tooling",
+          "tasks": [
+            {
+              "id": "TASK-001",
+              "title": "Create monorepo structure",
+              "description": "Set up project directory with backend, frontend, and shared configuration folders. Include README and linting configs.",
+              "dependencies": [],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "Repository has frontend and backend folders with README",
+                "Linters configured for both sides"
+              ],
+              "files_expected": [
+                "README.md"
+              ]
+            },
+            {
+              "id": "TASK-002",
+              "title": "Configure development scripts",
+              "description": "Add npm scripts to start frontend and backend concurrently, install nodemon and react-scripts.",
+              "dependencies": [
+                "TASK-001"
+              ],
+              "estimate": "1h",
+              "acceptance_criteria": [
+                "npm run dev starts both servers"
+              ],
+              "files_expected": [
+                "package.json"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "STORY-002",
+          "title": "Set up PostgreSQL database",
+          "tasks": [
+            {
+              "id": "TASK-003",
+              "title": "Configure database connection",
+              "description": "Create env config template and database connection module for Express to connect to PostgreSQL using pg client.",
+              "dependencies": [
+                "TASK-001"
+              ],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "API can connect to database using env vars"
+              ],
+              "files_expected": [
+                "backend/src/db/index.ts"
+              ]
+            },
+            {
+              "id": "TASK-004",
+              "title": "Define database schema",
+              "description": "Design SQL schema for users and tasks tables based on data model and write migration scripts.",
+              "dependencies": [
+                "TASK-003"
+              ],
+              "estimate": "3h",
+              "acceptance_criteria": [
+                "users and tasks tables created with required fields"
+              ],
+              "files_expected": [
+                "migrations/001_create_users.sql",
+                "migrations/002_create_tasks.sql"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-002",
+      "title": "Express API Development",
+      "stories": [
+        {
+          "id": "STORY-003",
+          "title": "Implement authentication endpoints",
+          "tasks": [
+            {
+              "id": "TASK-005",
+              "title": "Create auth controller and routes",
+              "description": "Implement register and login handlers with hashing (bcrypt) and JWT issuance.",
+              "dependencies": [
+                "TASK-003",
+                "TASK-004"
+              ],
+              "estimate": "4h",
+              "acceptance_criteria": [
+                "POST /api/auth/register creates user and stores hashed password",
+                "POST /api/auth/login returns JWT upon valid credentials"
+              ],
+              "files_expected": [
+                "backend/src/controllers/authController.ts"
+              ]
+            },
+            {
+              "id": "TASK-006",
+              "title": "Add auth middleware",
+              "description": "Implement JWT verification middleware to protect /api/tasks endpoints.",
+              "dependencies": [
+                "TASK-005"
+              ],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "Protected routes reject unauthorized requests"
+              ],
+              "files_expected": [
+                "backend/src/middleware/authMiddleware.ts"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "STORY-004",
+          "title": "Build task CRUD API",
+          "tasks": [
+            {
+              "id": "TASK-007",
+              "title": "Implement task routes and controller",
+              "description": "Create routes for list, create, update, delete tasks with user scope, status validation, and timestamp handling.",
+              "dependencies": [
+                "TASK-006"
+              ],
+              "estimate": "5h",
+              "acceptance_criteria": [
+                "Authenticated user can perform CRUD on tasks",
+                "Operations honor user_id scope"
+              ],
+              "files_expected": [
+                "backend/src/controllers/taskController.ts"
+              ]
+            },
+            {
+              "id": "TASK-008",
+              "title": "Write task service layer",
+              "description": "Encapsulate database operations for tasks into service functions used by controllers.",
+              "dependencies": [
+                "TASK-007"
+              ],
+              "estimate": "3h",
+              "acceptance_criteria": [
+                "Controllers delegate to service layer"
+              ],
+              "files_expected": [
+                "backend/src/services/taskService.ts"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "STORY-005",
+          "title": "API validation and error handling",
+          "tasks": [
+            {
+              "id": "TASK-009",
+              "title": "Add request validation",
+              "description": "Use middleware to validate request bodies for register/login and task payloads.",
+              "dependencies": [
+                "TASK-005",
+                "TASK-007"
+              ],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "Invalid payloads return 4xx responses"
+              ],
+              "files_expected": [
+                "backend/src/middleware/validationMiddleware.ts"
+              ]
+            },
+            {
+              "id": "TASK-010",
+              "title": "Implement centralized error handler",
+              "description": "Create express error handler to standardize API error responses.",
+              "dependencies": [
+                "TASK-009"
+              ],
+              "estimate": "1h",
+              "acceptance_criteria": [
+                "Errors returned as JSON with status code"
+              ],
+              "files_expected": [
+                "backend/src/middleware/errorHandler.ts"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-003",
+      "title": "React Frontend Implementation",
+      "stories": [
+        {
+          "id": "STORY-006",
+          "title": "Build authentication UI",
+          "tasks": [
+            {
+              "id": "TASK-011",
+              "title": "Create login and register pages",
+              "description": "Implement React components with forms, validation, and API calls for auth endpoints.",
+              "dependencies": [
+                "TASK-005"
+              ],
+              "estimate": "4h",
+              "acceptance_criteria": [
+                "Pages interact with backend auth endpoints",
+                "Form validations prevent empty submissions"
+              ],
+              "files_expected": [
+                "frontend/src/pages/LoginPage.tsx",
+                "frontend/src/pages/RegisterPage.tsx"
+              ]
+            },
+            {
+              "id": "TASK-012",
+              "title": "Manage auth state",
+              "description": "Implement global auth context or store to keep JWT and user info, protect routes.",
+              "dependencies": [
+                "TASK-011"
+              ],
+              "estimate": "3h",
+              "acceptance_criteria": [
+                "Authenticated routes require login"
+              ],
+              "files_expected": [
+                "frontend/src/context/AuthContext.tsx"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "STORY-007",
+          "title": "Task management UI",
+          "tasks": [
+            {
+              "id": "TASK-013",
+              "title": "Create task list and card components",
+              "description": "Render user tasks retrieved from API, show status and due date, allow filtering by status.",
+              "dependencies": [
+                "TASK-006",
+                "TASK-012"
+              ],
+              "estimate": "4h",
+              "acceptance_criteria": [
+                "Task list displays tasks from backend",
+                "UI highlights status and due date"
+              ],
+              "files_expected": [
+                "frontend/src/components/TaskList.tsx",
+                "frontend/src/components/TaskCard.tsx"
+              ]
+            },
+            {
+              "id": "TASK-014",
+              "title": "Implement task CRUD actions",
+              "description": "Add UI to create new tasks, update title/description/status, and delete tasks via API.",
+              "dependencies": [
+                "TASK-013"
+              ],
+              "estimate": "5h",
+              "acceptance_criteria": [
+                "Users can create, update, delete tasks",
+                "Status updates persist in backend"
+              ],
+              "files_expected": [
+                "frontend/src/components/TaskForm.tsx"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "STORY-008",
+          "title": "Application layout and routing",
+          "tasks": [
+            {
+              "id": "TASK-015",
+              "title": "Set up React Router",
+              "description": "Configure client-side routing for login, register, and dashboard pages with protected routes.",
+              "dependencies": [
+                "TASK-012",
+                "TASK-011"
+              ],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "Routes navigate without reloads",
+                "Dashboard is protected"
+              ],
+              "files_expected": [
+                "frontend/src/App.tsx"
+              ]
+            },
+            {
+              "id": "TASK-016",
+              "title": "Design basic UI layout",
+              "description": "Implement responsive layout with header, footer, and main content area using CSS modules or styled-components.",
+              "dependencies": [
+                "TASK-015"
+              ],
+              "estimate": "3h",
+              "acceptance_criteria": [
+                "App displays consistent layout across pages"
+              ],
+              "files_expected": [
+                "frontend/src/styles/Layout.module.css"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EPIC-004",
+      "title": "Testing, Deployment, and Documentation",
+      "stories": [
+        {
+          "id": "STORY-009",
+          "title": "Quality assurance",
+          "tasks": [
+            {
+              "id": "TASK-017",
+              "title": "Write backend integration tests",
+              "description": "Create tests for auth and task endpoints using Jest and supertest.",
+              "dependencies": [
+                "TASK-007",
+                "TASK-005"
+              ],
+              "estimate": "4h",
+              "acceptance_criteria": [
+                "Tests cover major success/error cases"
+              ],
+              "files_expected": [
+                "backend/tests/auth.test.ts",
+                "backend/tests/task.test.ts"
+              ]
+            },
+            {
+              "id": "TASK-018",
+              "title": "Add frontend smoke tests",
+              "description": "Implement basic component tests for key UI flows with React Testing Library.",
+              "dependencies": [
+                "TASK-011",
+                "TASK-013"
+              ],
+              "estimate": "3h",
+              "acceptance_criteria": [
+                "Critical components render without crashing"
+              ],
+              "files_expected": [
+                "frontend/src/__tests__/LoginPage.test.tsx"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "STORY-010",
+          "title": "Deployment preparation",
+          "tasks": [
+            {
+              "id": "TASK-019",
+              "title": "Document deployment steps",
+              "description": "Document environment variables, build commands, and database setup for standard web deployment.",
+              "dependencies": [
+                "TASK-002",
+                "TASK-004"
+              ],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "README contains deployment guide"
+              ],
+              "files_expected": [
+                "README.md"
+              ]
+            },
+            {
+              "id": "TASK-020",
+              "title": "Configure production build scripts",
+              "description": "Add build scripts for frontend and backend and describe how to serve static assets from Express.",
+              "dependencies": [
+                "TASK-019"
+              ],
+              "estimate": "2h",
+              "acceptance_criteria": [
+                "npm run build prepares production assets"
+              ],
+              "files_expected": [
+                "backend/package.json",
+                "frontend/package.json"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
